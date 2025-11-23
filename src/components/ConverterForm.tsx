@@ -126,7 +126,7 @@ export function ConverterForm() {
             </form>
 
             {error && (
-                <Alert variant="destructive">
+                <Alert variant="destructive" data-testid="error-alert">
                     <AlertDescription>{error}</AlertDescription>
                 </Alert>
             )}

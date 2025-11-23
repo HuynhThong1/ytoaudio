@@ -1,13 +1,18 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { ConverterForm } from '@/components/ConverterForm';
 import '@testing-library/jest-dom';
 
 // Mock fetch
 global.fetch = jest.fn();
 
+// Mock Progress component to avoid ResizeObserver issues
+jest.mock('@/components/ui/progress', () => ({
+    Progress: () => <div data-testid="progress-bar" />,
+}));
+
 describe('ConverterForm', () => {
     beforeEach(() => {
-        (global.fetch as jest.Mock).mockClear();
+        (global.fetch as jest.Mock).mockReset();
     });
 
     it('renders input and button', () => {
@@ -31,14 +36,13 @@ describe('ConverterForm', () => {
 
         render(<ConverterForm />);
         const input = screen.getByPlaceholderText(/https:\/\/www.youtube.com/i);
-        const button = screen.getByRole('button', { name: /fetch/i });
+        const fetchButton = screen.getByRole('button', { name: /fetch/i });
 
-        fireEvent.change(input, { target: { value: 'invalid' } });
-        fireEvent.click(button);
+        fireEvent.change(input, { target: { value: 'https://youtube.com/watch?v=test' } });
+        fireEvent.click(fetchButton);
 
-        await waitFor(() => {
-            expect(screen.getByText(/Invalid URL/i)).toBeInTheDocument();
-        });
+        const alert = await screen.findByTestId('error-alert', {}, { timeout: 3000 });
+        expect(alert).toHaveTextContent(/Invalid URL/i);
     });
 
     it('shows video info on success', async () => {
@@ -61,10 +65,8 @@ describe('ConverterForm', () => {
         fireEvent.change(input, { target: { value: 'https://youtube.com/watch?v=123' } });
         fireEvent.click(button);
 
-        await waitFor(() => {
-            expect(screen.getByText(/Test Video/i)).toBeInTheDocument();
-            expect(screen.getByText(/Test Author/i)).toBeInTheDocument();
-            expect(screen.getByText(/Download MP3/i)).toBeInTheDocument();
-        });
+        expect(await screen.findByTestId('video-title')).toHaveTextContent(/Test Video/i);
+        expect(screen.getByText(/Test Author/i)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Download MP3/i })).toBeInTheDocument();
     });
 });

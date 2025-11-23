@@ -19,17 +19,16 @@ export function VideoInfoCard({ info }: VideoInfoCardProps) {
         <Card className="w-full max-w-md mx-auto mt-6 overflow-hidden bg-card/50 backdrop-blur-sm border-primary/20 shadow-xl">
             <CardHeader className="p-0">
                 <div className="relative w-full aspect-video">
-                    <Image
+                    <img
                         src={info.thumbnail}
                         alt={info.title}
-                        fill
                         className="object-cover"
-                        unoptimized
+                        style={{ position: 'absolute', height: '100%', width: '100%', inset: 0, color: 'transparent' }}
                     />
                 </div>
             </CardHeader>
             <CardContent className="p-4 space-y-2">
-                <CardTitle className="text-lg font-bold line-clamp-2 leading-tight">
+                <CardTitle className="text-lg font-bold line-clamp-2 leading-tight" data-testid="video-title">
                     {info.title}
                 </CardTitle>
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
