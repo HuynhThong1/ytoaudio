@@ -5,18 +5,36 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 
+// Cache the binary path to avoid re-downloading
+let cachedBinaryPath: string | null = null;
+
 // Helper to ensure yt-dlp binary exists
 async function getBinaryPath() {
+  if (cachedBinaryPath && fs.existsSync(cachedBinaryPath)) {
+    return cachedBinaryPath;
+  }
+
   const isDev = process.env.NODE_ENV === 'development';
   // In dev, use project root. In prod (Vercel), use /tmp
-  const dir = isDev ? process.cwd() : os.tmpdir();
+  const dir = isDev ? process.cwd() : '/tmp';
   const binaryName = process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp';
   const binaryPath = path.join(dir, binaryName);
 
   if (!fs.existsSync(binaryPath)) {
     console.log('Downloading yt-dlp binary to', binaryPath);
-    await YTDlpWrap.downloadFromGithub(binaryPath);
+    try {
+      await YTDlpWrap.downloadFromGithub(binaryPath);
+      // Make binary executable on Linux
+      if (process.platform !== 'win32') {
+        fs.chmodSync(binaryPath, 0o755);
+      }
+    } catch (error) {
+      console.error('Failed to download yt-dlp binary:', error);
+      throw new Error('Failed to initialize yt-dlp binary');
+    }
   }
+
+  cachedBinaryPath = binaryPath;
   return binaryPath;
 }
 
