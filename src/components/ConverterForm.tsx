@@ -19,6 +19,15 @@ export function ConverterForm() {
     const [downloadProgress, setDownloadProgress] = useState(0);
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadedBytes, setDownloadedBytes] = useState(0);
+    const [accessCode, setAccessCode] = useState<string>('');
+    const [authorized, setAuthorized] = useState<boolean>(false);
+
+    // Persist code in memory only for current session (avoid localStorage for security unless needed)
+    const buildHeaders = () => {
+        const headers: Record<string, string> = {};
+        if (accessCode) headers['x-access-code'] = accessCode;
+        return headers;
+    };
 
     const handleFetchInfo = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -29,7 +38,9 @@ export function ConverterForm() {
         setVideoInfo(null);
 
         try {
-            const response = await fetch(`/api/info?url=${encodeURIComponent(url)}`);
+            const response = await fetch(`/api/info?url=${encodeURIComponent(url)}`, {
+                headers: buildHeaders(),
+            });
             const data = await response.json();
 
             if (!response.ok) {
@@ -37,6 +48,7 @@ export function ConverterForm() {
             }
 
             setVideoInfo(data);
+            if (accessCode && response.ok) setAuthorized(true);
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -61,7 +73,9 @@ export function ConverterForm() {
         setError(null);
 
         try {
-            const response = await fetch(`/api/convert?url=${encodeURIComponent(url)}&format=${format}`);
+            const response = await fetch(`/api/convert?url=${encodeURIComponent(url)}&format=${format}` , {
+                headers: buildHeaders(),
+            });
 
             if (!response.ok) throw new Error('Download failed');
             if (!response.body) throw new Error('No response body');
@@ -107,6 +121,20 @@ export function ConverterForm() {
     return (
         <div className="w-full max-w-xl mx-auto space-y-6">
             <form onSubmit={handleFetchInfo} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="accessCode" className="text-sm font-medium flex items-center gap-2">Access Code (optional)
+                        {authorized && <span className="text-green-600 text-xs">Verified</span>}
+                    </Label>
+                    <Input
+                        id="accessCode"
+                        type="text"
+                        placeholder="Enter code to unlock restricted videos"
+                        value={accessCode}
+                        onChange={(e) => setAccessCode(e.target.value.trim())}
+                        className="h-10 text-sm bg-background/50 backdrop-blur-sm"
+                        disabled={loading || isDownloading}
+                    />
+                </div>
                 <div className="space-y-2">
                     <Label htmlFor="url" className="text-lg font-medium">YouTube URL</Label>
                     <div className="flex gap-2">

@@ -52,16 +52,30 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unsupported format' }, { status: 400 });
   }
 
+  // Access code gating only if env configured
+  const requiredCode = process.env.CONVERT_ACCESS_CODE;
+  if (requiredCode) {
+    const providedCode = request.headers.get('x-access-code');
+    if (!providedCode || providedCode !== requiredCode) {
+      return NextResponse.json({ error: 'Access code required or invalid' }, { status: 401 });
+    }
+  }
+
   try {
     const binaryPath = await getBinaryPath();
     const ytDlpWrap = new YTDlpWrap(binaryPath);
+    const ytCookie = process.env.YT_COOKIE;
 
     // 1. Get Video Metadata for filename
-    const metadata = await ytDlpWrap.execPromise([
+    const metadataArgs = [
       url,
       '--dump-json',
       '--no-playlist'
-    ]);
+    ];
+    if (ytCookie) {
+      metadataArgs.push('--add-header', `Cookie: ${ytCookie}`);
+    }
+    const metadata = await ytDlpWrap.execPromise(metadataArgs);
     const info = JSON.parse(metadata);
     const title = info.title.replace(/[^\w\s]/gi, '');
     const filename = `${title}.${format}`;
@@ -69,14 +83,18 @@ export async function GET(request: Request) {
     // 2. Create Stream
     const stream = new ReadableStream({
       async start(controller) {
-        const ytDlpProcess = ytDlpWrap.exec([
+        const convertArgs = [
           url,
           '-x',
           '--audio-format', format,
           '--audio-quality', '0',
           '--ffmpeg-location', ffmpegPath || '',
           '-o', '-', // Stream to stdout
-        ]);
+        ];
+        if (ytCookie) {
+          convertArgs.push('--add-header', `Cookie: ${ytCookie}`);
+        }
+        const ytDlpProcess = ytDlpWrap.exec(convertArgs);
 
         ytDlpProcess.on('ytDlpEvent', (eventType, eventData) => {
            // console.log(eventType, eventData); // Optional logging
