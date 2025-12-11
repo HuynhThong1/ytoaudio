@@ -77,7 +77,22 @@ export function ConverterForm() {
                 headers: buildHeaders(),
             });
 
-            if (!response.ok) throw new Error('Download failed');
+            if (!response.ok) {
+                // Try to parse error message from JSON response
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Download failed');
+                    } catch (jsonError) {
+                        // If JSON parsing fails, use HTTP status text if available
+                        console.error('Failed to parse error response:', jsonError);
+                        throw new Error(response.statusText || 'Download failed');
+                    }
+                } else {
+                    throw new Error(response.statusText || 'Download failed');
+                }
+            }
             if (!response.body) throw new Error('No response body');
 
             const contentLength = response.headers.get('Content-Length');
