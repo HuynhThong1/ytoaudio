@@ -85,12 +85,12 @@ export function ConverterForm() {
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Download failed');
                     } catch (jsonError) {
-                        // If JSON parsing fails, fall back to generic error
+                        // If JSON parsing fails, use HTTP status text if available
                         console.error('Failed to parse error response:', jsonError);
-                        throw new Error('Download failed');
+                        throw new Error(response.statusText || 'Download failed');
                     }
                 } else {
-                    throw new Error('Download failed');
+                    throw new Error(response.statusText || 'Download failed');
                 }
             }
             if (!response.body) throw new Error('No response body');

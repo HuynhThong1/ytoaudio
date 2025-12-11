@@ -84,8 +84,7 @@ export async function GET(request: Request) {
       console.error('Metadata fetch error:', errorMessage);
       
       // Check for bot detection or sign-in required errors
-      if (errorMessage.includes("Sign in to confirm you're not a bot") || 
-          errorMessage.includes('Sign in to confirm')) {
+      if (errorMessage.includes("Sign in to confirm you're not a bot")) {
         return NextResponse.json({ 
           error: 'YouTube requires a signed-in account for this video (age/bot check). Please set up YT_COOKIE and CONVERT_ACCESS_CODE environment variables.' 
         }, { status: 403 });
@@ -96,7 +95,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'This video is unavailable or private' }, { status: 403 });
       }
       
-      if (errorMessage.includes('HTTP Error 429') || errorMessage.includes('429')) {
+      if (errorMessage.includes('HTTP Error 429') || errorMessage.includes('Status 429')) {
         return NextResponse.json({ error: 'Rate limited by YouTube. Please try again later.' }, { status: 429 });
       }
       
