@@ -79,10 +79,17 @@ export function ConverterForm() {
 
             if (!response.ok) {
                 // Try to parse error message from JSON response
-                try {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Download failed');
-                } catch (jsonError) {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Download failed');
+                    } catch (jsonError) {
+                        // If JSON parsing fails, fall back to generic error
+                        console.error('Failed to parse error response:', jsonError);
+                        throw new Error('Download failed');
+                    }
+                } else {
                     throw new Error('Download failed');
                 }
             }
