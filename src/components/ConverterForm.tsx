@@ -77,7 +77,15 @@ export function ConverterForm() {
                 headers: buildHeaders(),
             });
 
-            if (!response.ok) throw new Error('Download failed');
+            if (!response.ok) {
+                // Try to parse error message from JSON response
+                try {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Download failed');
+                } catch (jsonError) {
+                    throw new Error('Download failed');
+                }
+            }
             if (!response.body) throw new Error('No response body');
 
             const contentLength = response.headers.get('Content-Length');

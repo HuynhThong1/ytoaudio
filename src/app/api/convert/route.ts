@@ -75,7 +75,35 @@ export async function GET(request: Request) {
     if (ytCookie) {
       metadataArgs.push('--add-header', `Cookie: ${ytCookie}`);
     }
-    const metadata = await ytDlpWrap.execPromise(metadataArgs);
+    
+    let metadata;
+    try {
+      metadata = await ytDlpWrap.execPromise(metadataArgs);
+    } catch (metadataError: any) {
+      const errorMessage = metadataError?.message || metadataError?.toString() || '';
+      console.error('Metadata fetch error:', errorMessage);
+      
+      // Check for bot detection or sign-in required errors
+      if (errorMessage.includes("Sign in to confirm you're not a bot") || 
+          errorMessage.includes('Sign in to confirm') ||
+          errorMessage.includes('bot')) {
+        return NextResponse.json({ 
+          error: 'YouTube requires a signed-in account for this video (age/bot check). Please set up YT_COOKIE and CONVERT_ACCESS_CODE environment variables.' 
+        }, { status: 403 });
+      }
+      
+      // Check for other common YouTube errors
+      if (errorMessage.includes('Video unavailable') || errorMessage.includes('Private video')) {
+        return NextResponse.json({ error: 'This video is unavailable or private' }, { status: 403 });
+      }
+      
+      if (errorMessage.includes('ERROR:') && errorMessage.includes('HTTP Error 429')) {
+        return NextResponse.json({ error: 'Rate limited by YouTube. Please try again later.' }, { status: 429 });
+      }
+      
+      throw metadataError;
+    }
+    
     const info = JSON.parse(metadata);
     const title = info.title.replace(/[^\w\s]/gi, '');
     const filename = `${title}.${format}`;
@@ -128,8 +156,15 @@ export async function GET(request: Request) {
       headers,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Conversion error:', error);
-    return NextResponse.json({ error: 'Conversion failed' }, { status: 500 });
+    const errorMessage = error?.message || error?.toString() || '';
+    
+    // Provide more specific error messages
+    if (errorMessage.includes('ENOENT') || errorMessage.includes('not found')) {
+      return NextResponse.json({ error: 'Required binaries not found. Please try again.' }, { status: 500 });
+    }
+    
+    return NextResponse.json({ error: 'Conversion failed. Please check the URL and try again.' }, { status: 500 });
   }
 }
